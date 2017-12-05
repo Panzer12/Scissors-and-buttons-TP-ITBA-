@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#define NUMBER 0
+#define LETTER 1
 
 typedef struct {
     int fildir;
@@ -40,3 +42,4 @@ void Computadora(juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal
 void CorteComputadora(juegoT *juego,int fil,int col,Direcciontype *posInicial,Direcciontype *posFinal,int TipoCorte,int *corteMax,int *corteMin,int *corte);
 int guardarJuego (juegoT * juego, const char  *nombrearchivo);
 int cargarJuego(juegoT *juego, const char  *cargarNombre);
+int randint(int a);

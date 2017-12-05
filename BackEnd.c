@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "BackEnd.h"
+/*Genero espacio para la matriz*/
 
 char **GenMatriz(juegoT *juego){
     int col;
@@ -20,6 +21,7 @@ char **GenMatriz(juegoT *juego){
     return juego->matriz;
 }
 //----------------------------------------------------------------------------------//
+/*Borra matriz en caso de ser null*/
 void borrarmatriz ( char **matriz, int col ){
     int fil;
     for (fil=0 ; fil<col ; fil++){
@@ -28,19 +30,22 @@ void borrarmatriz ( char **matriz, int col ){
     free ( matriz );
 }
 //----------------------------------------------------------------------------------//
+/*Carga la matriz de un archivo .txt*/
 int CargaMatriz(juegoT *juego){
-    int NumeroTablero,fil,col,i,j,z,Tablero;
+    int NumeroTablero,fil,i,j,z,Tablero;
     char NombreArchivo[10],c;
     int error=1;
     FILE *pArchivo;
-    sprintf(NombreArchivo,"%dx%d.txt",juego->Dim,juego->Dim);
+    sprintf(NombreArchivo,"%dx%d",juego->Dim,juego->Dim);
     pArchivo=fopen(NombreArchivo,"r");
-    if(pArchivo==0)
-    error=0;
+    if(pArchivo==NULL){
+    error=0;   
+    return error;
+    }
     NumeroTablero=fgetc(pArchivo);
     NumeroTablero-='0';
-    Tablero=PrimerTurno(NumeroTablero);
-    Tablero=PrimerTurno(NumeroTablero);
+    Tablero=randint(NumeroTablero);
+    
     for(i=0;i<Tablero;i++){
             fgetc(pArchivo);
             fgetc(pArchivo);
@@ -49,28 +54,37 @@ int CargaMatriz(juegoT *juego){
                         c=fgetc(pArchivo);
                         if (!(isalpha(c) || c==' ')){
                             error=0;
+                            
                         }
                     }
                     c=fgetc(pArchivo);
-                    c=fgetc(pArchivo);//HACER MAQUINA DE ESTADOS
-                    if(c!='\n')
-                        error=0;
+                    c=fgetc(pArchivo); /*Consumo los enter*/
+                    if(c!='\n'){
+                      error=0;
+                      
+                    }
             }
             c=fgetc(pArchivo);
-            if(c!='-')
+            if(c!='-'){  /*Comprueba que el texto este bien separado y los elementos sean validos*/
                 error=0;
+
+            }
+    }
+    if (error==0){
+        return error;
     }
     i=(juego->Dim*(juego->Dim+2))*(Tablero)+(3*(Tablero+1));
     fseek ( pArchivo , i, SEEK_SET );
     for (fil=0;fil<juego->Dim;fil++){
-        for (col=0;col<juego->Dim;col++){
-            juego->matriz[fil][col]=fgetc(pArchivo);
+        
+          fgets(juego->matriz[fil],30,pArchivo); 
         }
     fgetc(pArchivo);
     fgetc(pArchivo);
-    }
+ 
    return error;
 }
+/* Revisa que la direccion a cortar sean  validas*/
 int checkMove(Direcciontype *posInicial,Direcciontype *posFinal,int *aumentoX,int *aumentoY){
     int y,x;
     y=(posFinal->fildir)-(posInicial->fildir);
@@ -83,8 +97,8 @@ int checkMove(Direcciontype *posInicial,Direcciontype *posFinal,int *aumentoX,in
         *aumentoX=-1;
         *aumentoY=-1;
     }
-    else if(x==0 && y>0){
-        *aumentoX=0;
+    else if(x==0 && y>0){   /* Asigno la direccion en caso que pertenezcan*/
+        *aumentoX=0;        /* a alguna de las 8 coordenadas cartesianas*/
         *aumentoY=1;
     }
     else if(x==0 && y<0){
@@ -112,6 +126,7 @@ int checkMove(Direcciontype *posInicial,Direcciontype *posFinal,int *aumentoX,in
     }
     return 1;
 }
+/* Se fija que en el corte sea de un mismo elemento */
 int checkCorte(juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal,int *aumentoX,int *aumentoY,int *distancia){
     char primerLetra,letraSig;
     int i,error=1,y,x;
@@ -124,10 +139,10 @@ int checkCorte(juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal,i
         *distancia=abs(x);
     }
     primerLetra=juego->matriz[posInicial->fildir][posInicial->coldir];
-    printf("%c\n",primerLetra);
-    for(i=0;(i<(*distancia)+1 && error==1);i++){
-        letraSig=juego->matriz[posInicial->fildir+((*aumentoY)*i)][posInicial->coldir+((*aumentoX)*i)];
-        printf("%c\n",letraSig);
+    
+    for(i=0;(i<(*distancia)+1 && error==1);i++){   /* Se fija que en una direccion los elementos sean iguales*/
+        letraSig=juego->matriz[posInicial->fildir+((*aumentoY)*i)][posInicial->coldir+((*aumentoX)*i)]; /* o que el elemento sea un espacio  */
+        
         if((letraSig!=primerLetra && letraSig!='0') || primerLetra=='0'){
             error=0;
         }
@@ -139,15 +154,16 @@ void Corte(juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal,int *
     primerLetra=juego->matriz[posInicial->fildir][posInicial->coldir];
     for(i=0;i<*distancia+1;i++){
         letraSig=juego->matriz[posInicial->fildir+((*aumentoY)*i)][posInicial->coldir+((*aumentoX)*i)];
-        if(letraSig==primerLetra && juego->turno.jugador1==1){
+        if(letraSig==primerLetra && juego->turno.jugador1==1){ /*Suma la cantidad de botones cortados al jugador que corresponda */
             juego->puntos.jugador1++;
         }
         else if(letraSig==primerLetra && juego->turno.jugador2==1){
             juego->puntos.jugador2++;
         }
         juego->matriz[posInicial->fildir+((*aumentoY)*i)][posInicial->coldir+((*aumentoX)*i)]='0';
-    }
+    } /*Cambia los elementos cortados por un '0'*/
 }
+/*Intercambia los turnos de los jugadores*/
 void IntercambiarTurno(juegoT *juego){
     int aux;
     aux=juego->turno.jugador1;
@@ -159,6 +175,7 @@ int PrimerTurno(int turnos){
         random=rand()/(RAND_MAX+1.0);
         return random*turnos;
   }
+/* Se fija si quedaron cortes disponibles */
 int Ganador(juegoT *juego){
     int fil,col,hayCorte=1;
     for(fil=0;fil<juego->Dim && hayCorte;fil++){
@@ -170,6 +187,7 @@ int Ganador(juegoT *juego){
     }
   return hayCorte;
 }
+/* Se fija en todas las direcciones si hay algun corte disponible */
 int PosibleCorte(juegoT *juego,int fil,int col){
     int i,j,z,flag=1,haycorte=1;
     char primerLetra,letraSig='Z';
@@ -196,12 +214,13 @@ int PosibleCorte(juegoT *juego,int fil,int col){
     return haycorte;
 }
 //*****************************************************************************************
+/*se fija elemento por elemento los cortes maximos y minimos*/
 void Computadora(juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal){
     int corteMax=0,corteMin;
     int fil,col,TipoCorte,corte;
-    corte=PrimerTurno(juego->Dim*juego->Dim);
+    corte=randint(juego->Dim*juego->Dim);
     corteMin=juego->Dim+1;
-    TipoCorte=PrimerTurno(2);
+    TipoCorte=randint(2);       /*Elijo el tipo de corte 1->corteMaximo 0->corteMinimo*/
     while(corte>0){
     for(fil=0;fil<juego->Dim;fil++){
         for(col=0;col<juego->Dim;col++){
@@ -243,7 +262,7 @@ void CorteComputadora(juegoT *juego,int fil,int col,Direcciontype *posInicial,Di
                         (*corte)--;
                         *corteMax=cantLetra;
                         if(*corte>0){
-                        posInicial->coldir=col;
+                        posInicial->coldir=col; // Cargo las dos posiciones para cortar
                         posInicial->fildir=fil;
                         posFinal->coldir=ColFin;
                         posFinal->fildir=filFin;}
@@ -265,7 +284,7 @@ void CorteComputadora(juegoT *juego,int fil,int col,Direcciontype *posInicial,Di
     }
     return ;
 }
-
+/*Guarda los datos del juego*/
 int guardarJuego(juegoT *juego, const char *nombrearchivo)
 {
   int turno,i,j;
@@ -292,6 +311,7 @@ else{
   }
   return 1;
 }
+/*Carga los datos del juego*/
 int cargarJuego(juegoT *juego,const char *nombrearchivo)
 {
     int turno,i,j;
@@ -326,4 +346,60 @@ int cargarJuego(juegoT *juego,const char *nombrearchivo)
     }
    }
    return 1;
+}
+
+int randint(int a){
+    return rand()%a;
+}
+
+
+/* Checkea que los datos sean validos */
+
+ int checkDato(char *cadena,juegoT *juego,Direcciontype *posInicial,Direcciontype *posFinal){      //Checkea los datos del movimiento devuelve 1 si esta OK
+    int c;
+    int number[4] = { 0, 0, 0, 0 };
+    int i = 0, status = NUMBER, numberflag = 0, error = 1;
+
+ /* Se´permite agregar tantos espacios como se desee antes del primer corchete */
+
+    /* Máquina de estados para chequear el comando, empieza en NUMBER y
+    ** sigue en LETTER para volver a NUMBER y así sucesivamente */
+    for(c=1;cadena[c]!='\0' && error == 1;c++) {
+        switch (status){
+            case NUMBER:    if (isdigit(cadena[c]) && i < 4){
+                                number[i] = number[i] * 10 + cadena[c] - '0';
+                                numberflag = 1;
+                            }else if(( (cadena[c]==',' && (i%2)==0) || (cadena[c]==']' && ((i%2)==1 || i==4) ))&& numberflag == 1){
+                                i++;
+                                numberflag = 0;
+                                if (cadena[c] == ']')
+                                    status = LETTER;
+                            }else{
+                                error = 0;
+                                
+                            }
+                            break;
+            case LETTER:    if ( cadena[c]== '[')
+                                status = NUMBER;
+                            else{
+                                error = 0;
+                               
+                            }
+                            break;
+        }
+        if(number[i]>juego->Dim-1 && i<4){
+            error=0;
+           
+        }
+    }
+    if (status == NUMBER || i < 4){
+        error = 0;
+   
+    }
+    posInicial->fildir=number[0];
+    posInicial->coldir=number[1];
+    posFinal->fildir=number[2];
+    posFinal->coldir=number[3];
+    
+    return error;
 }
